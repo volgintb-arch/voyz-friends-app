@@ -1,4 +1,4 @@
-import type { Command, DemoState, Application, Trip } from './model';
+import type { Command, DemoState, Application, Election, Trip } from './model';
 import { activeStatuses, application, available, canChat, getTrip, traveler } from './selectors';
 import { localDateAfter } from './seed';
 
@@ -19,7 +19,29 @@ export function expireState(s: DemoState, now: number): boolean {
       a.status = 'expired'; a.reason = 'Срок подтверждения истёк. Место и доступ ко всей переписке закрыты.'; changed = true;
     }
   }
+  for (const e of s.elections) {
+    if (!e.result && !e.supportReview && e.expiresAt <= now) { resolveElection(s, e, now); changed = true; }
+  }
   return changed;
+}
+
+// Итог выборов по голосам. Правила тура 2 и передачи в поддержку — допущения спецификации, не решение владельца.
+export function resolveElection(s: DemoState, e: Election, now: number): void {
+  const t = getTrip(s, e.tripId); if (!t) return;
+  const notice = (text: string) => s.notices.unshift({ id: `notice-${now}-${s.notices.length}-election`, text, tripId: t.id, at: now });
+  const count = new Map(e.candidates.map(id => [id, 0]));
+  for (const c of Object.values(e.votes)) if (count.has(c)) count.set(c, count.get(c)! + 1);
+  const max = Math.max(0, ...count.values()), leaders = e.candidates.filter(id => count.get(id) === max);
+  if (max > 0 && leaders.length === 1) {
+    const winner = leaders[0]; e.result = winner; t.hostId = winner; t.status = 'open';
+    const a = application(s, t.id, winner); if (a) a.status = 'left';
+    notice(`Новый автор — ${traveler(s, winner)?.name ?? 'участник'} (голосов: ${max}). Заявки возобновлены.`);
+  } else if ((e.round ?? 1) === 1) {
+    e.round = 2; e.candidates = leaders; e.votes = {}; e.expiresAt = now + 86400000;
+    notice(max ? 'Ничья — второй тур между лидерами, 24 часа.' : 'Голосов нет — второй тур, 24 часа.');
+  } else {
+    e.supportReview = true; notice('Второй тур не выявил автора. Решение передано в поддержку Voyz.');
+  }
 }
 
 export function execute(state: DemoState, command: Command, now = Date.now()): DemoState {
@@ -145,13 +167,17 @@ export function execute(state: DemoState, command: Command, now = Date.now()): D
     }
     case 'VOTE': {
       const e = s.elections.find(e => e.tripId === command.tripId && !e.result); check(e && e.candidates.includes(command.candidateId), 'Кандидат недоступен.');
+      check(!e!.supportReview, 'Голосование завершено, решение за поддержкой Voyz.');
       check(e!.eligibleVoters.includes(s.meId) && e!.expiresAt > now, 'Вы не входите в состав голосующих или срок истёк.'); e!.votes[s.meId] = command.candidateId; break;
     }
+    case 'DEMO_VOTES': {
+      const e = s.elections.find(e => e.tripId === command.tripId && !e.result && !e.supportReview); check(e?.candidates.length, 'Нет открытых выборов.');
+      for (const v of e!.eligibleVoters) if (v !== s.meId && !e!.votes[v]) e!.votes[v] = e!.candidates[0];
+      notice('Демо: остальные участники проголосовали.', command.tripId); break;
+    }
     case 'DEMO_ELECTION_FINISH': {
-      const e = s.elections.find(e => e.tripId === command.tripId && !e.result), t = tById(command.tripId); check(e?.candidates.length, 'Нет открытых выборов.');
-      const winner = e!.candidates[0]; e!.result = winner; t.hostId = winner; t.status = 'open';
-      const a = application(s, t.id, winner); if (a) a.status = 'left';
-      notice('Демо: участники согласились на нового автора — ' + traveler(s, winner)!.name, t.id); break;
+      const e = s.elections.find(e => e.tripId === command.tripId && !e.result && !e.supportReview); tById(command.tripId); check(e?.candidates.length, 'Нет открытых выборов.');
+      resolveElection(s, e!, now); break;
     }
     case 'DEMO_COMPLETE': {
       const t = tById(command.tripId); check(t.hostId === s.meId || application(s, t.id)?.status === 'confirmed', 'Сначала подтвердите участие.'); t.status = 'completed'; notice('Демо: обе стороны подтвердили совместную поездку.', t.id); break;

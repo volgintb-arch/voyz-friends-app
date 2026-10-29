@@ -46,6 +46,10 @@ export interface Trip {
   status: TripStatus;
   commercial: boolean;
   organizer?: string;
+  /** id места в справочнике Voyz Guide (assets/data/places.json в voyz-app). */
+  guidePlaceId?: string;
+  /** slug объекта в Voyz Booking, если рядом есть подключённое жильё. */
+  staySlug?: string;
   previousTerms?: { start: string; end: string; budget: number | null; place: string };
 }
 
@@ -81,6 +85,10 @@ export interface Election {
   votes: Record<Id, Id>;
   expiresAt: number;
   result?: Id;
+  /** 1 — основной тур (48 ч), 2 — второй тур между лидерами (24 ч, допущение). */
+  round?: 1 | 2;
+  /** Второй тур не выявил автора: решение за поддержкой Voyz (допущение). */
+  supportReview?: boolean;
 }
 
 export interface DemoState {
@@ -146,6 +154,7 @@ export type Command =
   | { type: 'REPORT'; targetId: Id; category: string; text: string }
   | { type: 'START_ELECTION'; tripId: Id }
   | { type: 'VOTE'; tripId: Id; candidateId: Id }
+  | { type: 'DEMO_VOTES'; tripId: Id }
   | { type: 'DEMO_ELECTION_FINISH'; tripId: Id }
   | { type: 'DEMO_COMPLETE'; tripId: Id }
   | { type: 'REVIEW'; tripId: Id; score: number; text: string };

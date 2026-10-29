@@ -1,6 +1,6 @@
 import { useVoyzNavigation } from '../navigation';
 import React from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,9 +53,10 @@ export function Empty({ title, text, children }: React.PropsWithChildren<{ title
 export function Avatar({ photo, size = 48 }: { photo: string; size?: number }) { return <Image source={photos[photo] || photos.alex} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityIgnoresInvertColors />; }
 export function Photo({ name, style }: { name: string; style?: StyleProp<import('react-native').ImageStyle> }) { return <Image source={photos[name] || photos.mountain} style={style} resizeMode="cover" accessibilityIgnoresInvertColors />; }
 export function Footer() { return <T style={ui.footer}>Демонстрационные профили, поездки и фотографии. Сообщения и покупки никуда не отправляются.</T>; }
-export function ExternalSheet({ type, onClose }: { type: string | null; onClose: () => void }) {
+export function ExternalSheet({ type, url, onClose }: { type: string | null; url?: string; onClose: () => void }) {
   const title = ({ tour: 'Авторский тур Voyz', guide: 'Место в Voyz Guide', stay: 'Проживание', account: 'Общий аккаунт Voyz' } as Record<string, string>)[type || ''] || 'Экосистема Voyz';
-  return <Sheet visible={!!type} title={title} onClose={onClose}><Notice title="Будущая интеграция">Общие аккаунты, каталог, бронирования и переписку подключат программисты. Сейчас приложение работает с локальными данными.</Notice><T style={ui.copy}>План поездки, участие в компании и коммерческое бронирование — разные действия. Нажатие этой кнопки не создаёт заказ и не списывает деньги.</T><Button label="Понятно" onPress={onClose} /></Sheet>;
+  const linked = type === 'guide' ? 'Откроется демо-версия Voyz Guide: как добраться, сезон, где ночевать.' : type === 'stay' ? 'Откроется Voyz Booking — поиск юрт и гостевых домов напрямую у хозяев. Групповой резерв Friends не бронирует жильё: каждый бронирует по правилам объекта.' : '';
+  return <Sheet visible={!!type} title={title} onClose={onClose}>{url ? <Notice title="Соседнее приложение Voyz">{linked}</Notice> : <Notice title="Будущая интеграция">Общие аккаунты, каталог, бронирования и переписку подключат программисты. Сейчас приложение работает с локальными данными.</Notice>}<T style={ui.copy}>План поездки, участие в компании и коммерческое бронирование — разные действия. Нажатие этой кнопки не создаёт заказ и не списывает деньги.</T>{url && <Button label="Открыть" icon="open-outline" onPress={() => { Linking.openURL(url).catch(() => {}); onClose(); }} />}<Button label={url ? 'Закрыть' : 'Понятно'} variant={url ? 'outline' : undefined} onPress={onClose} /></Sheet>;
 }
 export function Loading() { return <View style={ui.loading}><ActivityIndicator color={c.lime} size="large" /><T style={{ color: c.paper }}>Открываем Voyz Friends…</T></View>; }
 export const Shade = () => <LinearGradient colors={['transparent', '#00000030', '#000000D9']} style={StyleSheet.absoluteFill} />;

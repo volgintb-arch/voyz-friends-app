@@ -7,6 +7,7 @@ import { application, available, budgetText, canChat, datesText, getTrip, member
 import { colors as c } from '../theme';
 import { Avatar, Button, Check, Chip, Confirm, ExternalSheet, Field, Footer, Icon, IconButton, Notice, Photo, Screen, SectionTitle, Sheet, T, Tag, ui } from '../components/UI';
 import { ReportSheet } from '../components/ReportSheet';
+import { guideUrl, stayUrl } from '../services/ecosystem';
 
 export function Countdown({ expiresAt }: { expiresAt: number }) {
   const [, update] = useState(0); useEffect(() => { const timer = setInterval(() => update(n => n + 1), 30000); return () => clearInterval(timer); }, []);
@@ -71,7 +72,7 @@ export function TripScreen() {
     <Sheet visible={!!excludeId} title="Причина исключения" onClose={() => setExcludeId(null)}><Field label="Причина — увидит участник" value={reason} onChange={setReason} multiline /><T style={ui.copy}>Место и вся переписка станут недоступны. Решение можно обжаловать в поддержке.</T><Button label="Исключить" variant="danger" onPress={() => { if (run({ type: 'EXCLUDE', applicationId: excludeId!, reason })) setExcludeId(null); }} /></Sheet>
     <Sheet visible={terms} title="Изменить условия" onClose={() => setTerms(false)}><Field label="Маршрут" value={newPlace} onChange={setNewPlace} /><Field label="Начало · ГГГГ-ММ-ДД" value={newStart} onChange={setNewStart} /><Field label="Окончание · ГГГГ-ММ-ДД" value={newEnd} onChange={setNewEnd} /><Field label="Бюджет, сом — пусто означает «обсудим»" value={newBudget} onChange={setNewBudget} numeric /><Notice>Участники получат запрос на повторное согласие. Места сохраняются до ответа или истечения срока.</Notice><Button label="Сохранить новые условия" onPress={() => { if (run({ type: 'TERMS', tripId: t.id, place: newPlace, start: newStart, end: newEnd, budget: newBudget.trim() ? Number(newBudget) : null })) setTerms(false); }} /></Sheet>
     <Confirm visible={elect} title="Выйти и выбрать автора?" text="Вы потеряете права автора и доступ к переписке. Остальные участники выберут нового автора. Если никого не осталось, поездка отменяется." onClose={() => setElect(false)} label="Начать выбор автора" onConfirm={() => { if (run({ type: 'START_ELECTION', tripId: t.id })) { setElect(false); navigation.navigate('Election', { id: t.id }); } }} />
-    <ReportSheet targetId={report} onClose={() => setReport(null)} /><ExternalSheet type={external} onClose={() => setExternal(null)} />
+    <ReportSheet targetId={report} onClose={() => setReport(null)} /><ExternalSheet type={external} url={external === 'guide' ? guideUrl(t.guidePlaceId) : external === 'stay' ? stayUrl(t, group.length + 1) : undefined} onClose={() => setExternal(null)} />
   </>;
 }
 

@@ -4,6 +4,7 @@ import { createSeed } from '../src/domain/seed';
 import { execute, isDate } from '../src/domain/commands';
 import { application, available, canChat, getTrip, occupied } from '../src/domain/selectors';
 import type { Command, DemoState } from '../src/domain/model';
+import { guideUrl, stayUrl } from '../src/services/ecosystem';
 
 const NOW = new Date('2026-10-30T10:00:00Z').getTime();
 const seed = () => createSeed(NOW);
@@ -76,7 +77,38 @@ test('only host can moderate; leaving host loses chat and pauses enrolment', () 
   let s = command(seed(), { type: 'START_ELECTION', tripId: 'own' });
   assert.equal(getTrip(s, 'own')!.hostId, null); assert.equal(getTrip(s, 'own')!.status, 'election'); assert.equal(canChat(s, 'own'), false);
   assert.throws(() => command(s, { type: 'VOTE', tripId: 'own', candidateId: 'aida' }));
+  s = command(s, { type: 'DEMO_VOTES', tripId: 'own' });
   s = command(s, { type: 'DEMO_ELECTION_FINISH', tripId: 'own' }); assert.equal(getTrip(s, 'own')!.hostId, 'aida');
+});
+const electionWith = (voters: string[]) => {
+  let s = seed(); s.applications.push(...voters.filter(v => v !== 'aida').map(v => ({ ...s.applications.find(a => a.id === 'own-aida')!, id: 'own-' + v, userId: v })));
+  s = command(s, { type: 'START_ELECTION', tripId: 'own' }); return s;
+};
+test('election is decided by votes, not by candidate order', () => {
+  let s = electionWith(['aida', 'timur', 'alex']); const e = s.elections[0];
+  e.votes = { aida: 'timur', timur: 'timur', alex: 'aida' };
+  s = command(s, { type: 'DEMO_ELECTION_FINISH', tripId: 'own' });
+  assert.equal(getTrip(s, 'own')!.hostId, 'timur'); assert.equal(getTrip(s, 'own')!.status, 'open');
+});
+test('tie opens a 24-hour second round; a second tie goes to support and keeps applications paused', () => {
+  let s = electionWith(['aida', 'timur']); s.elections[0].votes = { aida: 'aida', timur: 'timur' };
+  s = command(s, { type: 'DEMO_ELECTION_FINISH', tripId: 'own' });
+  const e = s.elections[0]; assert.equal(e.round, 2); assert.deepEqual(e.candidates.sort(), ['aida', 'timur']); assert.equal(e.expiresAt, NOW + 86400000);
+  assert.equal(getTrip(s, 'own')!.hostId, null);
+  e.votes = { aida: 'aida', timur: 'timur' }; s = command(s, { type: 'DEMO_ELECTION_FINISH', tripId: 'own' });
+  assert.equal(s.elections[0].supportReview, true); assert.equal(getTrip(s, 'own')!.status, 'election');
+  assert.throws(() => command(s, { type: 'DEMO_ELECTION_FINISH', tripId: 'own' }));
+});
+test('an election resolves by itself when the 48-hour term passes', () => {
+  let s = electionWith(['aida']); s.elections[0].votes = { aida: 'aida' };
+  s = command(s, { type: 'EXPIRE' }, NOW + 172800001); assert.equal(getTrip(s, 'own')!.hostId, 'aida');
+});
+test('ecosystem links point to the guide place and to the booking object with trip dates', () => {
+  const t = getTrip(seed(), 'son')!;
+  assert.equal(guideUrl(t.guidePlaceId), 'https://volgintb-arch.github.io/voyz-app/place/kg-son-kul');
+  assert.equal(guideUrl(undefined), 'https://volgintb-arch.github.io/voyz-app/');
+  assert.equal(stayUrl({ ...t, staySlug: 'son-kul-aiyl' }, 3), `https://volgintb-arch.github.io/voyz-booking/#/guest/p/son-kul-aiyl?src=direct&in=${t.start}&out=${t.end}&g=3`);
+  assert.equal(stayUrl(t, 2), 'https://volgintb-arch.github.io/voyz-booking/#/guest');
 });
 test('commercial tour cannot grant local booking or chat; calendar rejects nonexistent dates', () => {
   const s = seed(); assert.equal(canChat(s, 'tour'), false);
