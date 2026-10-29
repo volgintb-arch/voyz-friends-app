@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "React Native web rendering",
+    "apply/reserve/confirm",
+    "chat message",
+    "terms reconfirm",
+    "exit revokes chat",
+    "personal request",
+    "AsyncStorage persistence",
+    "320/375/768/1440 layouts"
+  ],
+  "errors": []
+}

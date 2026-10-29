@@ -1,0 +1,5 @@
+/* Expo Router retains inactive web scenes. Hidden scenes must not intercept input. */
+[aria-hidden="true"], [aria-hidden="true"] * {
+  pointer-events: none !important;
+}
+html, body { background: #000; }

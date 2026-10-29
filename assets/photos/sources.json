@@ -1,0 +1,13 @@
+{
+  "note": "Illustrative stock images; not verified photos of the named Kyrgyz locations. People and biographies are fictional demo profiles.",
+  "images": {
+    "mountain": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1100&q=85&fit=crop",
+    "lake": "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=1000&q=85&fit=crop",
+    "road": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1000&q=85&fit=crop",
+    "camp": "https://images.unsplash.com/photo-1478131143081-fd1d999a7c24?w=1000&q=85&fit=crop",
+    "aida": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=85&fit=crop",
+    "timur": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&q=85&fit=crop",
+    "anna": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=85&fit=crop",
+    "alex": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&q=85&fit=crop"
+  }
+}

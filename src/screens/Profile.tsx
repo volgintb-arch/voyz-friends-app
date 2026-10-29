@@ -1,0 +1,58 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useVoyzNavigation } from '../navigation';
+import React, { useState } from 'react';
+import { Pressable, Switch, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { application, getTrip, traveler } from '../domain/selectors';
+import { useStore } from '../state/Store';
+import { colors as c } from '../theme';
+import { Avatar, Button, Chip, Confirm, ExternalSheet, Field, Footer, Icon, Notice, Photo, Screen, SectionTitle, Sheet, T, ui } from '../components/UI';
+import { ReportSheet } from '../components/ReportSheet';
+
+export function ProfileScreen() {
+  const { state, run, reset } = useStore(); const navigation = useVoyzNavigation(); const me = traveler(state, state.meId)!;
+  const [edit, setEdit] = useState(false), [name, setName] = useState(me.name), [age, setAge] = useState(String(me.age)), [city, setCity] = useState(me.city), [about, setAbout] = useState(me.about);
+  const [verification, setVerification] = useState(false), [support, setSupport] = useState(false), [report, setReport] = useState(false), [settings, setSettings] = useState(false), [clear, setClear] = useState(false), [external, setExternal] = useState<string | null>(null);
+  const openEdit = () => { setName(me.name); setAge(String(me.age)); setCity(me.city); setAbout(me.about); setEdit(true); };
+  return <><Screen title="Это вы." subtitle="Общий аккаунт Voyz. Ваши путешествия и знакомства."><Photo name="mountain" style={{ height: 180, borderRadius: 25, width: '100%' }} /><View style={{ marginTop: -58, marginLeft: 18, borderWidth: 5, borderColor: c.paper, borderRadius: 49, alignSelf: 'flex-start' }}><Avatar photo={me.photo} size={88} /></View><SectionTitle title={`${me.name}, ${me.age}`} /><T style={ui.copy}>{me.city} · {me.languages.join(', ')}</T><T style={ui.copy}>{me.about}</T><Button label="Редактировать анкету" variant="outline" icon="create-outline" onPress={openEdit} /><View style={[ui.row, { justifyContent: 'space-between', paddingVertical: 12 }]}><View style={{ flex: 1 }}><T>Ищу компанию</T><T style={{ fontSize: 12, color: c.muted, lineHeight: 19, marginTop: 6 }}>{me.visible ? 'Анкета видна в поиске людей.' : 'Анкета скрыта из поиска.'} Поездки и чаты сохраняются.</T></View><Switch accessibilityLabel="Ищу компанию" value={me.visible} onValueChange={() => { run({ type: 'VISIBILITY' }); }} trackColor={{ false: '#9DA68D', true: c.ink }} thumbColor={me.visible ? c.lime : c.paper} hitSlop={10} /></View><Notice title="Другие не видят ваш телефон">Публичны имя, возраст, город, языки, описание и отметки проверок. Данные бронирований и точная геолокация скрыты.</Notice>
+    {[
+      ['shield-checkmark-outline', me.verified ? 'Телефон и фото проверены' : 'Завершить проверки', () => setVerification(true)],
+      ['notifications-outline', 'Уведомления', () => navigation.navigate('Notifications')],
+      ['map-outline', 'Экосистема Voyz', () => setExternal('account')],
+      ['flag-outline', 'Поддержка и обращения', () => setSupport(true)],
+      ['layers-outline', 'Проверить демо-сценарии', () => navigation.navigate('Demo')],
+      ['settings-outline', 'Настройки', () => setSettings(true)],
+    ].map(([icon, text, onPress]) => <Pressable key={String(text)} accessibilityRole="button" onPress={onPress as () => void} style={[ui.row, { minHeight: 60, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.line }]}><Icon name={icon as React.ComponentProps<typeof Icon>['name']} /><T style={{ flex: 1 }}>{String(text)}</T><Icon name="chevron-forward" size={18} /></Pressable>)}
+    <Notice title="Русская версия интерфейса">Кыргызский и английский предусмотрены в спецификации. Полные переводы потребуют отдельных словарей и проверки.</Notice><Footer />
+  </Screen>
+    <Sheet visible={edit} title="Ваша анкета" onClose={() => setEdit(false)}><Field label="Имя — общее с Voyz" value={name} onChange={setName} /><Field label="Возраст, 18+" value={age} onChange={setAge} numeric /><Field label="Город" value={city} onChange={setCity} /><Field label="Про меня" value={about} onChange={setAbout} multiline /><T style={ui.copy}>В настоящем продукте общие поля синхронизируются с Voyz. Здесь изменения только локальные.</T><Button label="Сохранить анкету" onPress={() => { if (run({ type: 'PROFILE', name, age: Number(age), city, about }, 'Анкета сохранена.')) setEdit(false); }} /></Sheet>
+    <Sheet visible={verification} title="Проверки профиля" onClose={() => setVerification(false)}><Notice title={me.verified ? 'Телефон подтверждён' : 'Телефон не подтверждён'}>Номер скрыт от других пользователей.</Notice><Notice title={me.verified ? 'Фото проверено' : 'Фото ожидает проверки'}>Это демонстрация. Фото и документы никуда не отправляются.</Notice><Button label={me.verified ? 'Демо: снять проверки' : 'Демо: пройти проверки'} variant="outline" onPress={() => run({ type: 'VERIFY', enabled: !me.verified })} /></Sheet>
+    <Sheet visible={support} title="Поддержка Voyz" onClose={() => setSupport(false)}><T style={ui.copy}>Жалоба доступна и после потери чата. В прототипе обращения хранятся только на устройстве.</T><Button label="Создать демо-обращение" onPress={() => { setSupport(false); setReport(true); }} />{state.complaints.map((complaint, i) => <Notice key={complaint.id} title={`Демо-обращение ${i + 1}`}><T style={ui.copy}>{complaint.category}{`\n`}{complaint.text}</T></Notice>)}</Sheet>
+    <Sheet visible={settings} title="Настройки прототипа" onClose={() => setSettings(false)}><Notice>Нет внешней аналитики, настоящих сообщений и покупок. Демоданные сохраняются на устройстве.</Notice><Button label={state.loggedIn ? 'Демо: выйти из аккаунта' : 'Демо: войти'} variant="outline" onPress={() => run({ type: 'LOGIN', enabled: !state.loggedIn })} /><Button label="Сбросить демоданные" variant="danger" onPress={() => { setSettings(false); setClear(true); }} /></Sheet>
+    <Confirm visible={clear} title="Сбросить прототип?" text="Удалятся только локальные демоданные Voyz Friends и черновик. Реальный Voyz не затрагивается." label="Сбросить" onClose={() => setClear(false)} onConfirm={() => { reset(); AsyncStorage.removeItem('@voyz-friends/native-draft-v1').catch(() => {}); setClear(false); navigation.navigate('Tabs', { screen: 'Trips' }); }} />
+    <ReportSheet targetId={report ? 'general' : null} onClose={() => setReport(false)} /><ExternalSheet type={external} onClose={() => setExternal(null)} />
+  </>;
+}
+
+export function DemoScreen() {
+  const { state, run, tell } = useStore(); const navigation = useVoyzNavigation(); const [selected, setSelected] = useState('son');
+  const t = getTrip(state, selected)!, a = application(state, selected);
+  const approval = (accepted: boolean) => { if (!a) { tell('Сначала отправьте заявку в выбранную поездку.'); return; } if (run({ type: accepted ? 'APPROVE' : 'DECLINE', applicationId: a.id, demo: true })) navigation.navigate('Trip', { id: selected }); };
+  const actions: [string, () => void][] = [
+    ['Одобрить мою заявку', () => approval(true)], ['Отклонить мою заявку', () => approval(false)],
+    ['Истечение резерва', () => { if (run({ type: 'DEMO_EXPIRE', tripId: selected })) navigation.navigate('Chat', { id: selected }); }],
+    ['Изменить бюджет моей поездки', () => { if (run({ type: 'TERMS', tripId: selected, start: t.start, end: t.end, place: t.place, budget: (t.budget || 5000) + 1500, demo: true })) navigation.navigate('Trip', { id: selected }); }],
+    ['Исключить меня с причиной', () => { if (!a) { tell('Сначала получите участие.'); return; } if (run({ type: 'EXCLUDE', applicationId: a.id, reason: 'Демонстрация: автор изменил состав компании. Решение можно обжаловать.', demo: true })) navigation.navigate('Trip', { id: selected }); }],
+    ['Принять личный запрос', () => { const connection = state.connections.find(c => c.status === 'pending'); if (!connection) { tell('Сначала отправьте запрос человеку.'); return; } if (run({ type: 'DEMO_CONNECTION', userId: connection.userId, accepted: true })) navigation.navigate('Chat', { id: 'dm:' + connection.userId }); }],
+    ['Отклонить личный запрос', () => { const connection = state.connections.find(c => c.status === 'pending'); if (!connection) { tell('Нет ожидающего запроса.'); return; } run({ type: 'DEMO_CONNECTION', userId: connection.userId, accepted: false }, 'Демо: запрос отклонён.'); }],
+    ['Анна подтверждает место в моей поездке', () => { const app = state.applications.find(x => x.userId === 'anna' && x.status === 'reserved' && getTrip(state, x.tripId)?.hostId === state.meId); if (!app) { tell('Сначала одобрите заявку Анны в своей поездке.'); return; } if (run({ type: 'CONFIRM', applicationId: app.id, demo: true })) navigation.navigate('Trip', { id: app.tripId }); }],
+    ['Завершить и подтвердить совместную поездку', () => { if (run({ type: 'DEMO_COMPLETE', tripId: selected })) navigation.navigate('Trip', { id: selected }); }],
+  ];
+  return <Screen title="Демо-сценарии" subtitle="Только для проверки интерфейса." back><Notice title="Действия других участников">Здесь можно смоделировать одобрение и другие события. В настоящем приложении пользователь не сможет одобрять собственную заявку или принимать свой запрос.</Notice><SectionTitle title="Выберите поездку" /><View style={ui.wrap}>{state.trips.filter(t => !t.commercial && t.hostId !== state.meId).map(trip => <Chip key={trip.id} label={trip.place} selected={selected === trip.id} onPress={() => setSelected(trip.id)} />)}</View>{actions.map(([label, fn]) => <Button key={label} label={label} variant="outline" onPress={fn} />)}</Screen>;
+}
+
+export function ElectionScreen() {
+  const params = useLocalSearchParams<{ id: string }>(); const { state, run } = useStore(); const navigation = useVoyzNavigation();
+  const t = getTrip(state, params.id), election = state.elections.find(e => e.tripId === params.id && !e.result);
+  return <Screen title="Кто продолжит поездку?" back><Notice title={t?.status === 'cancelled' ? 'Поездка отменена' : 'Группа выбирает автора'}>Новые заявки приостановлены. Основной срок — 48 часов; при равенстве предусмотрен второй тур.</Notice>{election?.candidates.map(id => { const p = traveler(state, id)!; return <View key={id} style={[ui.row, { paddingVertical: 12 }]}><Avatar photo={p.photo} /><View style={{ flex: 1 }}><T>{p.name}</T><T style={{ fontSize: 12, color: c.muted }}>Согласие кандидата моделируется</T></View>{election.eligibleVoters.includes(state.meId) && <Button label={election.votes[state.meId] === id ? 'Голос учтён' : 'Голосовать'} variant="outline" onPress={() => run({ type: 'VOTE', tripId: params.id, candidateId: id })} />}</View>; })}<Notice title="Ограничение демонстрации">Реальные голоса нескольких устройств, кворум, второй тур и подтверждение победителя пока не подключены. Бывший автор не голосует за оставшихся участников.</Notice>{election && <Button label="Демо: участники выбрали первого кандидата" onPress={() => { if (run({ type: 'DEMO_ELECTION_FINISH', tripId: params.id })) navigation.replace('Trip', { id: params.id }); }} />}</Screen>;
+}

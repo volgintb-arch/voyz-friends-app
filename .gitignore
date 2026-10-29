@@ -2,6 +2,15 @@
 
 # dependencies
 node_modules/
+.claude/
+dist-native/
+dist-ios/
+dist-android/
+dist-universal/
+*.zip
+.env
+.env.*
+!.env.example
 
 # Expo
 .expo/
