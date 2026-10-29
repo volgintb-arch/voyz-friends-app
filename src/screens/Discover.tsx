@@ -1,13 +1,13 @@
 import { useVoyzNavigation } from '../navigation';
 import React, { useState } from 'react';
-import { PanResponder, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useStore } from '../state/Store';
 import { emptyFilters } from '../domain/model';
 import { matches } from '../domain/selectors';
-import { colors as c } from '../theme';
 import { Button, Chip, Empty, ExternalSheet, Footer, IconButton, Photo, Screen, SectionTitle, T, ui } from '../components/UI';
 import { TripCard, PersonCard } from '../components/Cards';
 import { FilterSheet } from '../components/FilterSheet';
+import { SwipeDeck } from '../components/SwipeDeck';
 
 export function TripsScreen() {
   const { state } = useStore(); const navigation = useVoyzNavigation();
@@ -21,10 +21,9 @@ export function TripsScreen() {
 
 export function PeopleScreen() {
   const { state } = useStore(); const navigation = useVoyzNavigation();
-  const [query, setQuery] = useState(''), [mode, setMode] = useState(false), [index, setIndex] = useState(0), [filters, setFilters] = useState({ ...emptyFilters }), [filterOpen, setFilterOpen] = useState(false);
+  const [query, setQuery] = useState(''), [mode, setMode] = useState(false), [filters, setFilters] = useState({ ...emptyFilters }), [filterOpen, setFilterOpen] = useState(false);
   const people = state.travelers.filter(p => p.id !== state.meId && p.visible && !state.blocked.includes(p.id)).filter(p => `${p.name} ${p.city} ${p.plan} ${p.interests.join(' ')}`.toLowerCase().includes(query.toLowerCase())).filter(p => (!filters.language || p.languages.includes(filters.language)) && (!filters.from || p.end >= filters.from) && (!filters.to || p.start <= filters.to) && (!filters.maxBudget || (p.budget === null ? filters.unknownBudget : p.budget <= +filters.maxBudget)) && (!filters.composition || filters.composition === 'mixed' || p.gender === filters.composition));
-  const person = people[index % Math.max(1, people.length)];
-  const next = () => setIndex(i => i + 1);
-  const responder = PanResponder.create({ onMoveShouldSetPanResponder: (_, g) => mode && Math.abs(g.dx) > 30 && Math.abs(g.dy) < 20, onPanResponderRelease: (_, g) => { if (Math.abs(g.dx) > 80 && person) { if (g.dx < 0) next(); else navigation.navigate('Person', { id: person.id }); } } });
-  return <><Screen title="Свои люди." subtitle="Общие планы — уже хороший повод познакомиться." search={query} onSearch={setQuery} searchPlaceholder="Кто с вами по пути?" filter={() => setFilterOpen(true)}><View style={[ui.row, { justifyContent: 'space-between' }]}><SectionTitle title="Кто с вами по пути" /><IconButton name={mode ? 'grid-outline' : 'albums-outline'} label={mode ? 'Лента карточек' : 'Анкеты по одной'} onPress={() => setMode(!mode)} /></View>{!people.length ? <Empty title="Пока нет совпадений" text="Попробуйте другие даты, язык или направление."><Button label="Сбросить поиск" variant="secondary" onPress={() => { setQuery(''); setFilters({ ...emptyFilters }); }} /></Empty> : mode ? <View {...responder.panHandlers}><PersonCard person={person} large /><View style={[ui.row, { justifyContent: 'center', marginTop: 18 }]}><IconButton name="close" label="Следующая анкета" onPress={next} /><Button label="Познакомиться" icon="chatbubble-outline" onPress={() => navigation.navigate('Person', { id: person.id })} /></View><T style={{ textAlign: 'center', fontSize: 12, color: c.muted, marginTop: 12 }}>Свайп влево — пропустить, вправо — открыть анкету</T></View> : <View style={ui.wrap}>{people.map(p => <PersonCard key={p.id} person={p} />)}</View>}<Footer /></Screen><FilterSheet visible={filterOpen} filters={filters} onApply={setFilters} onClose={() => setFilterOpen(false)} /></>;
+  // Колода начинается заново при новом поиске или фильтрах.
+  const deckKey = `${query}|${JSON.stringify(filters)}|${people.map(p => p.id).join(',')}`;
+  return <><Screen title="Свои люди." subtitle="Общие планы — уже хороший повод познакомиться." search={query} onSearch={setQuery} searchPlaceholder="Кто с вами по пути?" filter={() => setFilterOpen(true)}><View style={[ui.row, { justifyContent: 'space-between' }]}><SectionTitle title="Кто с вами по пути" /><IconButton name={mode ? 'grid-outline' : 'albums-outline'} label={mode ? 'Лента карточек' : 'Анкеты по одной'} onPress={() => setMode(!mode)} /></View>{!people.length ? <Empty title="Пока нет совпадений" text="Попробуйте другие даты, язык или направление."><Button label="Сбросить поиск" variant="secondary" onPress={() => { setQuery(''); setFilters({ ...emptyFilters }); }} /></Empty> : mode ? <SwipeDeck key={deckKey} people={people} onSkip={() => {}} onLike={p => navigation.navigate('Person', { id: p.id, request: '1' })} onOpen={p => navigation.navigate('Person', { id: p.id })} /> : <View style={ui.wrap}>{people.map(p => <PersonCard key={p.id} person={p} />)}</View>}<Footer /></Screen><FilterSheet visible={filterOpen} filters={filters} onApply={setFilters} onClose={() => setFilterOpen(false)} /></>;
 }
