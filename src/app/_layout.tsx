@@ -3,6 +3,7 @@ import '../../global.css';
 import { StyleSheet, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { StoreProvider, useStore } from '../state/Store';
 import { Button, Loading, Notice, Sheet, T } from '../components/UI';
@@ -16,5 +17,5 @@ function Shell() {
     {!!toast && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[styles.toastWrap, { bottom: Math.max(insets.bottom, 12) + 90 }]}><View style={styles.toast}><Text style={styles.toastText}>{toast}</Text></View></View>}
   </>;
 }
-export default function RootLayout() { return <SafeAreaProvider><StoreProvider><Shell /></StoreProvider></SafeAreaProvider>; }
+export default function RootLayout() { return <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider><StoreProvider><Shell /></StoreProvider></SafeAreaProvider></GestureHandlerRootView>; }
 const styles = StyleSheet.create({ toastWrap: { position: 'absolute', left: 18, right: 18, alignItems: 'center', zIndex: 100 }, toast: { backgroundColor: c.ink, padding: 17, borderRadius: 20, maxWidth: 600, borderWidth: 1, borderColor: '#7A806E' }, toastText: { fontSize: 14, lineHeight: 21, color: c.paper, textAlign: 'center' } });
